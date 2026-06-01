@@ -1,0 +1,114 @@
+[project]
+name = "doc-worker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+authors = [{ name = "Gabriel Torres Gamez", email = "gabriel.torres@fuet.ch" }]
+dependencies = [
+    "imap-tools>=1.13.0",
+    "mistralai>=1.0.0",
+    "openai>=2.38.0",
+    "pypdfium2>=5.9.0",
+    "pytest>=9.0.3",
+    "pyyaml>=6.0.3",
+    "ruff>=0.15.15",
+    "ty>=0.0.41",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.format]
+indent-style = "tab"
+
+[tool.ruff.lint]
+preview = true
+extend-select = [
+    "W",     # pycodestyle warnings
+    "I",     # import sorting
+    "UP",    # pyupgrade
+    "B",     # bugbear
+    "C4",    # comprehensions
+    "ISC",   # implicit string concat
+    "RET",   # return practices
+    "SIM",   # simplification
+    "TID",   # import practices
+    "TC",    # TYPE_CHECKING enforcement
+    "PTH",   # pathlib over os.path
+    "D",     # pydocstyle
+    "N",     # pep8-naming
+    "ANN",   # type annotations
+    "PERF",  # perflint
+    "RUF",   # ruff-specific rules
+    "A",     # flake8-builtins
+    "PIE",   # flake8-pie
+    "RSE",   # flake8-raise
+    "FLY",   # flynt
+    "LOG",   # flake8-logging
+    "G",     # logging format
+    "DTZ",   # datetime timezone
+    "SLOT",  # __slots__ enforcement
+    "ICN",   # import conventions
+    "FURB",  # refurb
+    "T10",   # debugger statements
+    "BLE",   # blind except
+    "ASYNC", # async best practices
+    "NPY",   # numpy (silent if unused)
+    "PD",    # pandas (silent if unused)
+    "DOC",   # pydoclint
+    "S",     # bandit security
+    "PT",    # pytest style
+    "ARG",   # unused arguments
+    "EM",    # error messages
+    "TD",    # todos
+    "ERA",   # eradicate commented-out code
+    "C90",   # mccabe complexity
+    "TRY",   # tryceratops
+    "PL",    # pylint
+    "T20",   # print statements
+    "INP",   # no implicit namespace packages
+]
+ignore = [
+    "W191",     # tab indentation
+    "D206",     # tab docstring indentation
+    "COM812",   # conflicts with formatter
+    "ERA001",   # too many false positives on legitimate explanatory comments
+    "TRY003",   # exception messages in separate variables adds boilerplate, no readability gain
+    "EM101",    # same as TRY003
+    "EM102",    # same as TRY003
+    "ASYNC240", # asyncio project; trio/anyio.path recommendation irrelevant
+    "A002",     # `id` and similar arg names shadowing builtins is idiomatic Python
+    "PLW0717",  # try-clause statement limit; message processing legitimately needs a wide try scope
+    "DOC502",   # indirectly raised exceptions (re-raised from callees) are intentionally documented
+]
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-positional-args = 6
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D",       # no docstring requirements
+    "DOC",     # no docstring signature matching
+    "ANN",     # no annotation requirements
+    "S101",    # assert is idiomatic in pytest
+    "ARG",     # fixtures often have unused args
+    "SLF001",  # private access is common in tests
+    "T20",     # print is fine in tests
+    "ERA001",  # commented-out tests are common
+    "PLR2004", # magic values common in assertions
+    "PLR6301", # pytest class methods must be instance methods even without self
+    "PLC2701", # tests intentionally import private helpers to test them directly
+    "RUF029",  # async fixtures decorated with @pytest_asyncio.fixture need async even without await
+    "RUF059",  # unpacked fixture vars often partially unused
+    "DTZ",     # test time calculations use local time intentionally
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

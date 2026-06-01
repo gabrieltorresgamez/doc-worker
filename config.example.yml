@@ -1,0 +1,60 @@
+poll_interval_seconds: 60
+
+imap:
+  host: mail.infomaniak.com
+  port: 993
+  folder_inbox: INBOX
+  folder_processed: Processed
+  folder_failed: Failed
+
+smtp:
+  host: mail.infomaniak.com
+  port: 587
+  from_address: scan@scan.example.com
+  from_name: "Document Assistant"
+
+# infomaniak (default, Swiss-sovereign, single API call)
+# mistral   (best OCR accuracy, two API calls, EU)
+backend: infomaniak
+
+# Model overrides — defaults shown, omit section to use them as-is
+backends:
+  infomaniak:
+    model: mistralai/Ministral-3-14B-Instruct-2512
+  mistral:
+    ocr_model: mistral-ocr-2512
+    chat_model: mistral-small-latest
+
+defaults:
+  mode: translate        # translate | summary
+  language: en           # ISO 639-1 code; applied when a recipient omits language
+
+# ISO 639-1 code -> language name used in prompts
+languages:
+  en: English
+  es: Spanish
+  fr: French
+  de: German
+  it: Italian
+  pt: Portuguese
+
+# One entry per Infomaniak alias (local-part = person key).
+# address is required; mode and language override the global defaults when set.
+recipients:
+  alice:
+    address: alice@example.com
+    mode: translate
+    language: en
+  bob:
+    address: bob@example.com
+    language: de
+
+# Used when the person key is unrecognised
+fallback_reply_to: alice@example.com
+
+# What to do with the source mail after handling
+# 'move' is recommended for failures so no scan is ever silently lost
+on_success: move         # move | delete
+on_failure: move         # move | delete
+
+max_attachment_mb: 25

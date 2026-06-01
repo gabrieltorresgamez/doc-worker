@@ -1,0 +1,16 @@
+# Snippet to merge into your existing home-lab compose stack.
+# Place this file in the same directory as your main compose file and use:
+#   docker compose -f docker-compose.yml -f doc-worker/docker-compose.yml up -d
+
+services:
+  doc-worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
