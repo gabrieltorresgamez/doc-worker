@@ -10,20 +10,16 @@ scanner → pipeline+alice@scan.example.com
                     └── person key → looks up address, mode, language in config.yml
 ```
 
----
-
 ## How it works
 
-1. **Poll** — fetches all UNSEEN messages from the configured IMAP inbox every `poll_interval_seconds`. Messages stay UNSEEN until explicitly moved or deleted, so a crash before that leaves them available for reprocessing.
-2. **Decode tag** — parses the `+tag` from the `To:` address to extract the person key and optional mode/language overrides.
-3. **Extract attachments** — accepts PDFs and images up to `max_attachment_mb`. Others are skipped. If no supported attachment is found, an error is sent back and the message moves to the failed folder.
-4. **Process** — calls the configured backend, which OCRs the document and translates or summarizes it. Multiple attachments are each processed individually and combined into a single reply.
-5. **Reply** — sends the result as a styled HTML email (with plain text fallback) plus the original attachment(s) to the recipient's real address.
-6. **Post-action** — moves or deletes the source message (configurable separately for success and failure).
-
-On any error the original attachment is emailed back with an error note, and the message moves to the failed folder.
-
----
+```mermaid
+flowchart LR
+    A([Scanner]) -->|scan| B[(Inbox)]
+    B -->|poll| C[doc-worker]
+    C -->|OCR + AI| D[Mistral]
+    D --> C
+    C -->|result| E([Recipient])
+```
 
 ## Plus-addressing
 
@@ -45,13 +41,9 @@ The tag is split on `.` or `-`. The first token is the person key and must match
 
 Unknown tokens are ignored. Priority for mode and language: **tag → recipient config → global defaults**.
 
----
-
 ## Backend
 
 Two-step Mistral pipeline: `mistral-ocr-2512` for document extraction, then `mistral-small-latest` for translation or summarization. PDFs are sent natively — no client-side rendering required. Both models can be overridden in `config.yml` under `backends.mistral`.
-
----
 
 ## Setup
 
@@ -107,8 +99,6 @@ To merge into an existing compose stack:
 docker compose -f docker-compose.yml -f doc-worker/docker-compose.yml up -d
 ```
 
----
-
 ## Project layout
 
 ```
@@ -125,8 +115,6 @@ src/doc_worker/
     ├── factory.py   # get_backend() factory
     └── mistral.py
 ```
-
----
 
 ## Configuration reference
 
@@ -180,8 +168,6 @@ on_failure: move      # move | delete  ('move' recommended — no scan is silent
 
 max_attachment_mb: 25
 ```
-
----
 
 ## Privacy
 
