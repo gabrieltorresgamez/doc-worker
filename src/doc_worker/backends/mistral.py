@@ -58,7 +58,9 @@ class MistralBackend:
 
 		logger.info(
 			"Mistral chat: mode=%s lang=%s ocr_chars=%d",
-			mode, target_language, len(ocr_text),
+			mode,
+			target_language,
+			len(ocr_text),
 		)
 		return self._chat(ocr_text, mode, target_language)
 
@@ -88,15 +90,11 @@ class MistralBackend:
 				return "\n\n".join(page.markdown for page in response.pages)
 			except Exception as exc:  # noqa: BLE001
 				last_error = exc
-				logger.warning(
-					"Mistral OCR attempt %d/%d failed: %s", attempt + 1, _MAX_RETRIES, exc
-				)
+				logger.warning("Mistral OCR attempt %d/%d failed: %s", attempt + 1, _MAX_RETRIES, exc)
 				if attempt < _MAX_RETRIES - 1:
 					time.sleep(_RETRY_BACKOFF**attempt)
 
-		raise RuntimeError(
-			f"Mistral OCR failed after {_MAX_RETRIES} attempts"
-		) from last_error
+		raise RuntimeError(f"Mistral OCR failed after {_MAX_RETRIES} attempts") from last_error
 
 	def _chat(self, ocr_text: str, mode: str, target_language: str) -> str:
 		"""Transform OCR text via chat completion with retry.
@@ -127,12 +125,8 @@ class MistralBackend:
 				return response.choices[0].message.content or ""
 			except Exception as exc:  # noqa: BLE001
 				last_error = exc
-				logger.warning(
-					"Mistral chat attempt %d/%d failed: %s", attempt + 1, _MAX_RETRIES, exc
-				)
+				logger.warning("Mistral chat attempt %d/%d failed: %s", attempt + 1, _MAX_RETRIES, exc)
 				if attempt < _MAX_RETRIES - 1:
 					time.sleep(_RETRY_BACKOFF**attempt)
 
-		raise RuntimeError(
-			f"Mistral chat failed after {_MAX_RETRIES} attempts"
-		) from last_error
+		raise RuntimeError(f"Mistral chat failed after {_MAX_RETRIES} attempts") from last_error

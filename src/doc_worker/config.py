@@ -124,10 +124,7 @@ def load_config(path: Path | None = None) -> AppConfig:
 		mistral_backend=MistralBackendConfig(**raw.get("backends", {}).get("mistral", {})),
 		defaults=Defaults(**raw["defaults"]),
 		languages=dict(raw.get("languages", {})),
-		recipients={
-			key: RecipientConfig(**val)
-			for key, val in raw.get("recipients", {}).items()
-		},
+		recipients={key: RecipientConfig(**val) for key, val in raw.get("recipients", {}).items()},
 		fallback_reply_to=str(raw["fallback_reply_to"]),
 		on_success=str(raw.get("on_success", "move")),
 		on_failure=str(raw.get("on_failure", "move")),

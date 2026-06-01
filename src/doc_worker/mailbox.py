@@ -65,9 +65,7 @@ def ensure_folders(config: AppConfig) -> None:
 	Args:
 		config: Application configuration.
 	"""
-	with MailBox(config.imap.host, config.imap.port).login(
-		config.imap_user, config.imap_password
-	) as mb:
+	with MailBox(config.imap.host, config.imap.port).login(config.imap_user, config.imap_password) as mb:
 		existing = {f.name for f in mb.folder.list()}
 		for folder in (config.imap.folder_processed, config.imap.folder_failed):
 			if folder not in existing:
@@ -87,9 +85,7 @@ def fetch_unseen(config: AppConfig) -> list[MailMessage]:
 	Returns:
 		List of unread MailMessage objects (may be empty).
 	"""
-	with MailBox(config.imap.host, config.imap.port).login(
-		config.imap_user, config.imap_password
-	) as mb:
+	with MailBox(config.imap.host, config.imap.port).login(config.imap_user, config.imap_password) as mb:
 		mb.folder.set(config.imap.folder_inbox)
 		messages = list(mb.fetch(AND(seen=False), mark_seen=False))
 	logger.info("Fetched %d unseen message(s)", len(messages))
@@ -105,9 +101,7 @@ def apply_post_action(uid: str, action: str, folder: str, config: AppConfig) -> 
 		folder: Destination folder name (only used when action is 'move').
 		config: Application configuration.
 	"""
-	with MailBox(config.imap.host, config.imap.port).login(
-		config.imap_user, config.imap_password
-	) as mb:
+	with MailBox(config.imap.host, config.imap.port).login(config.imap_user, config.imap_password) as mb:
 		mb.folder.set(config.imap.folder_inbox)
 		if action == "delete":
 			mb.delete([uid])

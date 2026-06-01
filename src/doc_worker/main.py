@@ -142,16 +142,13 @@ def _send_error(
 	"""
 	try:
 		originals: list[tuple[bytes, str, str]] = [
-			(att.payload, att.content_type, att.filename)
-			for att in extract_attachments(msg, config.max_attachment_mb)
+			(att.payload, att.content_type, att.filename) for att in extract_attachments(msg, config.max_attachment_mb)
 		]
 		send_reply(
 			reply_to=reply_to,
 			subject=f"[Error] Could not process: {filename}",
 			body=(
-				"Your document could not be processed automatically.\n\n"
-				f"Error: {exc}\n\n"
-				"The original file is attached."
+				f"Your document could not be processed automatically.\n\nError: {exc}\n\nThe original file is attached."
 			),
 			attachments=originals,
 			config=config,
@@ -186,7 +183,11 @@ def process_message(msg: MailMessage, config: AppConfig, backend: DocBackend) ->
 
 		logger.info(
 			"uid=%s person=%s mode=%s lang=%s -> %s",
-			uid, job.person, job.mode, job.lang_code, job.reply_to,
+			uid,
+			job.person,
+			job.mode,
+			job.lang_code,
+			job.reply_to,
 		)
 
 		attachments = extract_attachments(msg, config.max_attachment_mb)
@@ -221,7 +222,12 @@ def process_message(msg: MailMessage, config: AppConfig, backend: DocBackend) ->
 		elapsed = (datetime.now(UTC) - start).total_seconds()
 		logger.info(
 			"OK uid=%s person=%s mode=%s lang=%s files=%d elapsed=%.1fs",
-			uid, job.person, job.mode, job.lang_code, len(attachments), elapsed,
+			uid,
+			job.person,
+			job.mode,
+			job.lang_code,
+			len(attachments),
+			elapsed,
 		)
 
 	except Exception as exc:
