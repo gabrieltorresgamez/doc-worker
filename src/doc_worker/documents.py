@@ -1,13 +1,10 @@
-"""Attachment extraction and PDF-to-image conversion."""
+"""Attachment extraction from email messages."""
 
 from __future__ import annotations
 
-import io
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-
-import pypdfium2 as pdfium
 
 if TYPE_CHECKING:
 	from imap_tools import MailMessage
@@ -65,29 +62,3 @@ def extract_attachments(msg: MailMessage, max_mb: int) -> list[Attachment]:
 		)
 
 	return result
-
-
-def pdf_to_images(pdf_bytes: bytes, scale: float = 2.0) -> list[bytes]:
-	"""Render each page of a PDF to a PNG image.
-
-	Args:
-		pdf_bytes: Raw PDF file bytes.
-		scale: Render scale factor. Higher values improve quality at the cost
-			of larger output (2.0 ≈ 144 dpi from a 72 dpi base).
-
-	Returns:
-		List of PNG image bytes, one entry per page in document order.
-	"""
-	doc = pdfium.PdfDocument(pdf_bytes)
-	pages: list[bytes] = []
-
-	for i, page in enumerate(doc):
-		bitmap = page.render(scale=scale, rotation=0)
-		pil_image = bitmap.to_pil()
-		buf = io.BytesIO()
-		pil_image.save(buf, format="PNG")
-		png = buf.getvalue()
-		pages.append(png)
-		logger.debug("Rendered page %d: %d bytes", i + 1, len(png))
-
-	return pages

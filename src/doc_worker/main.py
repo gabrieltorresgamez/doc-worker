@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from .alias import extract_local_part
+from .alias import extract_person_key
 from .backends import get_backend
 from .config import load_config
 from .documents import extract_attachments
@@ -53,16 +53,17 @@ def _resolve_job(msg: MailMessage, config: AppConfig) -> _Job:
 		delivered = msg.headers.get("delivered-to")
 		raw_to = str(delivered[0]) if delivered else ""
 
-	person = extract_local_part(raw_to)
-	recipient = config.recipients.get(person)
+	params = extract_person_key(raw_to)
+	recipient = config.recipients.get(params.person)
 
-	mode = (recipient.mode if recipient else None) or config.defaults.mode
-	lang_code = (recipient.language if recipient else None) or config.defaults.language
+	# Priority: alias tag → recipient config → global defaults
+	mode = params.mode or (recipient.mode if recipient else None) or config.defaults.mode
+	lang_code = params.language or (recipient.language if recipient else None) or config.defaults.language
 	language_name = config.languages.get(lang_code, lang_code.capitalize())
 	reply_to = recipient.address if recipient else config.fallback_reply_to
 
 	return _Job(
-		person=person,
+		person=params.person,
 		mode=mode,
 		lang_code=lang_code,
 		language_name=language_name,

@@ -7,14 +7,16 @@ requires-python = ">=3.14"
 authors = [{ name = "Gabriel Torres Gamez", email = "gabriel.torres@fuet.ch" }]
 dependencies = [
     "imap-tools>=1.13.0",
+    "markdown>=3.10.2",
     "mistralai>=1.0.0",
-    "openai>=2.38.0",
-    "pypdfium2>=5.9.0",
     "pytest>=9.0.3",
     "pyyaml>=6.0.3",
     "ruff>=0.15.15",
     "ty>=0.0.41",
 ]
+
+[project.scripts]
+doc-worker = "doc_worker.main:run"
 
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]
@@ -112,3 +114,8 @@ max-positional-args = 6
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[dependency-groups]
+dev = [
+    "types-markdown>=3.10.2.20260518",
+]

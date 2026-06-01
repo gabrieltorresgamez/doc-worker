@@ -10,17 +10,13 @@ imap:
 smtp:
   host: mail.infomaniak.com
   port: 587
-  from_address: scan@scan.example.com
+  from_address: pipeline@yourdomain.com
   from_name: "Document Assistant"
 
-# infomaniak (default, Swiss-sovereign, single API call)
-# mistral   (best OCR accuracy, two API calls, EU)
-backend: infomaniak
+backend: mistral
 
 # Model overrides — defaults shown, omit section to use them as-is
 backends:
-  infomaniak:
-    model: mistralai/Ministral-3-14B-Instruct-2512
   mistral:
     ocr_model: mistral-ocr-2512
     chat_model: mistral-small-latest
@@ -38,7 +34,8 @@ languages:
   it: Italian
   pt: Portuguese
 
-# One entry per Infomaniak alias (local-part = person key).
+# One entry per recipient. The key must match the '+tag' in the destination address
+# (e.g. pipeline+alice@yourdomain.com → key: alice).
 # address is required; mode and language override the global defaults when set.
 recipients:
   alice:

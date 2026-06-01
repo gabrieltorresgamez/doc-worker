@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TYPE_CHECKING
 
+import markdown as md
 from imap_tools import AND, MailBox
 
 if TYPE_CHECKING:
@@ -18,6 +19,44 @@ if TYPE_CHECKING:
 	from doc_worker.config import AppConfig
 
 logger = logging.getLogger(__name__)
+
+_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ font-family: sans-serif; font-size: 15px; line-height: 1.6; color: #222; max-width: 800px; margin: 2em auto; padding: 0 1em; }}
+  h1, h2, h3 {{ color: #111; margin-top: 1.4em; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+  th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+  th {{ background: #f5f5f5; }}
+  code {{ background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-size: 0.9em; }}
+  pre {{ background: #f5f5f5; padding: 1em; border-radius: 4px; overflow-x: auto; }}
+  blockquote {{ border-left: 3px solid #ccc; margin: 0; padding-left: 1em; color: #555; }}
+  hr {{ border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }}
+</style>
+</head>
+<body>
+{content}
+</body>
+</html>"""
+
+
+def _to_html(markdown_text: str) -> str:
+	"""Convert markdown text to a complete, styled HTML document.
+
+	Args:
+		markdown_text: Markdown-formatted string (e.g. from Mistral).
+
+	Returns:
+		Full HTML document string.
+	"""
+	content = md.markdown(
+		markdown_text,
+		extensions=["tables", "fenced_code", "nl2br"],
+	)
+	return _HTML_TEMPLATE.format(content=content)
 
 
 def ensure_folders(config: AppConfig) -> None:
@@ -88,19 +127,26 @@ def send_reply(
 ) -> None:
 	"""Compose and send a reply email via SMTP with STARTTLS.
 
+	The body is sent as multipart/alternative with a plain-text fallback and
+	an HTML part converted from the markdown body.
+
 	Args:
 		reply_to: Recipient email address.
 		subject: Email subject line.
-		body: Plain-text body (UTF-8).
+		body: Markdown-formatted body text (UTF-8).
 		attachments: List of (payload_bytes, content_type, filename) tuples
 			to attach to the message.
 		config: Application configuration.
 	"""
-	msg = MIMEMultipart()
-	msg["From"] = f"{config.smtp.from_name} <{config.smtp.from_address}>"
-	msg["To"] = reply_to
-	msg["Subject"] = subject
-	msg.attach(MIMEText(body, "plain", "utf-8"))
+	outer = MIMEMultipart("mixed")
+	outer["From"] = f"{config.smtp.from_name} <{config.smtp.from_address}>"
+	outer["To"] = reply_to
+	outer["Subject"] = subject
+
+	alternative = MIMEMultipart("alternative")
+	alternative.attach(MIMEText(body, "plain", "utf-8"))
+	alternative.attach(MIMEText(_to_html(body), "html", "utf-8"))
+	outer.attach(alternative)
 
 	for payload, content_type, filename in attachments:
 		main, sub = content_type.split("/", 1) if "/" in content_type else ("application", "octet-stream")
@@ -108,12 +154,12 @@ def send_reply(
 		part.set_payload(payload)
 		email.encoders.encode_base64(part)
 		part.add_header("Content-Disposition", "attachment", filename=filename)
-		msg.attach(part)
+		outer.attach(part)
 
 	with smtplib.SMTP(config.smtp.host, config.smtp.port) as smtp:
 		smtp.ehlo()
 		smtp.starttls()
 		smtp.login(config.smtp_user, config.smtp_password)
-		smtp.sendmail(config.smtp.from_address, reply_to, msg.as_string())
+		smtp.sendmail(config.smtp.from_address, reply_to, outer.as_string())
 
 	logger.info("Sent reply to %r subject=%r", reply_to, subject)

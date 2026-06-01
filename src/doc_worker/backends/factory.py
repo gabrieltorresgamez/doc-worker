@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .infomaniak import InfomaniakBackend
 from .mistral import MistralBackend
 
 if TYPE_CHECKING:
@@ -24,9 +23,6 @@ def get_backend(config: AppConfig) -> DocBackend:
 	Raises:
 		ValueError: If the configured backend name is not recognised.
 	"""
-	name = config.backend.lower()
-	if name == "infomaniak":
-		return InfomaniakBackend(config)
-	if name == "mistral":
+	if config.backend.lower() == "mistral":
 		return MistralBackend(config)
-	raise ValueError(f"Unknown backend {name!r}. Valid values: 'infomaniak', 'mistral'.")
+	raise ValueError(f"Unknown backend {config.backend!r}. Valid value: 'mistral'.")
