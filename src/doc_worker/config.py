@@ -71,6 +71,8 @@ class AppConfig:
 	on_success: str
 	on_failure: str
 	max_attachment_mb: int
+	max_attachments: int
+	allowed_senders: tuple[str, ...]
 	# Secrets — never in config.yml
 	imap_user: str
 	imap_password: str
@@ -129,6 +131,8 @@ def load_config(path: Path | None = None) -> AppConfig:
 		on_success=str(raw.get("on_success", "move")),
 		on_failure=str(raw.get("on_failure", "move")),
 		max_attachment_mb=int(raw.get("max_attachment_mb", 25)),
+		max_attachments=int(raw.get("max_attachments", 10)),
+		allowed_senders=tuple(str(s).strip().lower() for s in raw.get("allowed_senders", []) if str(s).strip()),
 		imap_user=_require_env("IMAP_USER"),
 		imap_password=_require_env("IMAP_PASSWORD"),
 		smtp_user=_require_env("SMTP_USER"),

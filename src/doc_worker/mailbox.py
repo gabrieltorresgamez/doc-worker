@@ -5,12 +5,14 @@ from __future__ import annotations
 import email.encoders
 import logging
 import smtplib
+import ssl
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TYPE_CHECKING
 
 import markdown as md
+import nh3
 from imap_tools import AND, MailBox
 
 if TYPE_CHECKING:
@@ -43,20 +45,88 @@ _HTML_TEMPLATE = """\
 </html>"""
 
 
+# Tags permitted in the rendered email body. Limited to what Markdown emits and
+# the inline CSS styles — everything else (script, iframe, event handlers, …) is
+# stripped. The body is derived from untrusted document content, so it must never
+# be trusted as HTML.
+_ALLOWED_TAGS = {
+	"a",
+	"b",
+	"blockquote",
+	"br",
+	"code",
+	"del",
+	"em",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"hr",
+	"i",
+	"li",
+	"ol",
+	"p",
+	"pre",
+	"strong",
+	"sub",
+	"sup",
+	"table",
+	"tbody",
+	"td",
+	"th",
+	"thead",
+	"tr",
+	"ul",
+}
+_ALLOWED_ATTRIBUTES = {"a": {"href", "title"}}
+
+# Smallest ASCII ordinal that is not a control character (space).
+_MIN_PRINTABLE_ORD = 0x20
+
+
 def _to_html(markdown_text: str) -> str:
 	"""Convert markdown text to a complete, styled HTML document.
+
+	The markdown is rendered and then sanitized with an HTML allowlist. The body
+	originates from untrusted document content (OCR output) and filenames, so any
+	raw HTML, scripts, or event handlers it may contain are stripped before the
+	result is embedded in the outgoing email.
 
 	Args:
 		markdown_text: Markdown-formatted string (e.g. from Mistral).
 
 	Returns:
-		Full HTML document string.
+		Full, sanitized HTML document string.
 	"""
-	content = md.markdown(
+	rendered = md.markdown(
 		markdown_text,
 		extensions=["tables", "fenced_code", "nl2br"],
 	)
+	content = nh3.clean(
+		rendered,
+		tags=_ALLOWED_TAGS,
+		attributes=_ALLOWED_ATTRIBUTES,
+		link_rel="noopener noreferrer nofollow",
+	)
 	return _HTML_TEMPLATE.format(content=content)
+
+
+def _sanitize_header(value: str) -> str:
+	"""Strip CR/LF and other control characters from an email header value.
+
+	Subjects and filenames are derived from untrusted attachments. Removing
+	control characters prevents header-injection (CRLF) into the outgoing
+	message.
+
+	Args:
+		value: Raw header value.
+
+	Returns:
+		The value with control characters removed.
+	"""
+	return "".join(ch for ch in value if ch == "\t" or ord(ch) >= _MIN_PRINTABLE_ORD)
 
 
 def ensure_folders(config: AppConfig) -> None:
@@ -134,8 +204,8 @@ def send_reply(
 	"""
 	outer = MIMEMultipart("mixed")
 	outer["From"] = f"{config.smtp.from_name} <{config.smtp.from_address}>"
-	outer["To"] = reply_to
-	outer["Subject"] = subject
+	outer["To"] = _sanitize_header(reply_to)
+	outer["Subject"] = _sanitize_header(subject)
 
 	alternative = MIMEMultipart("alternative")
 	alternative.attach(MIMEText(body, "plain", "utf-8"))
@@ -147,12 +217,12 @@ def send_reply(
 		part = MIMEBase(main, sub)
 		part.set_payload(payload)
 		email.encoders.encode_base64(part)
-		part.add_header("Content-Disposition", "attachment", filename=filename)
+		part.add_header("Content-Disposition", "attachment", filename=_sanitize_header(filename))
 		outer.attach(part)
 
 	with smtplib.SMTP(config.smtp.host, config.smtp.port) as smtp:
 		smtp.ehlo()
-		smtp.starttls()
+		smtp.starttls(context=ssl.create_default_context())
 		smtp.login(config.smtp_user, config.smtp_password)
 		smtp.sendmail(config.smtp.from_address, reply_to, outer.as_string())
 

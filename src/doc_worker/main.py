@@ -13,6 +13,7 @@ from .backends import get_backend
 from .config import load_config
 from .documents import extract_attachments
 from .mailbox import apply_post_action, ensure_folders, fetch_unseen, send_reply
+from .senders import sender_allowed
 
 if TYPE_CHECKING:
 	from imap_tools import MailMessage
@@ -125,17 +126,19 @@ def _collect_attachments(
 def _send_error(
 	uid: str,
 	filename: str,
-	exc: Exception,
 	msg: MailMessage,
 	reply_to: str,
 	config: AppConfig,
 ) -> None:
-	"""Send an error notification with the original attachment and apply on_failure.
+	"""Send a generic error notification with the original attachment and apply on_failure.
+
+	The underlying exception is intentionally not included in the user-facing
+	message to avoid leaking internal details; it is recorded in the logs by the
+	caller instead.
 
 	Args:
 		uid: IMAP UID of the source message.
 		filename: Filename hint for the subject line.
-		exc: The exception that caused the failure.
 		msg: Original IMAP message (used to re-attach the file).
 		reply_to: Recipient address for the error notification.
 		config: Application configuration.
@@ -148,7 +151,8 @@ def _send_error(
 			reply_to=reply_to,
 			subject=f"[Error] Could not process: {filename}",
 			body=(
-				f"Your document could not be processed automatically.\n\nError: {exc}\n\nThe original file is attached."
+				"Your document could not be processed automatically.\n\n"
+				"The original file is attached so you can try again or handle it manually."
 			),
 			attachments=originals,
 			config=config,
@@ -178,6 +182,11 @@ def process_message(msg: MailMessage, config: AppConfig, backend: DocBackend) ->
 	filename = "(no attachment)"
 
 	try:
+		if not sender_allowed(msg.from_, config.allowed_senders):
+			logger.warning("uid=%s: sender %r not in allowlist — skipping", uid, msg.from_)
+			apply_post_action(uid, config.on_failure, config.imap.folder_failed, config)
+			return
+
 		job = _resolve_job(msg, config)
 		reply_to = job.reply_to
 
@@ -207,6 +216,16 @@ def process_message(msg: MailMessage, config: AppConfig, backend: DocBackend) ->
 			apply_post_action(uid, config.on_failure, config.imap.folder_failed, config)
 			return
 
+		if len(attachments) > config.max_attachments:
+			logger.warning(
+				"uid=%s: %d attachments exceeds limit of %d — processing first %d only",
+				uid,
+				len(attachments),
+				config.max_attachments,
+				config.max_attachments,
+			)
+			attachments = attachments[: config.max_attachments]
+
 		filename = attachments[0].filename
 		body, originals = _collect_attachments(attachments, backend, job)
 
@@ -230,10 +249,10 @@ def process_message(msg: MailMessage, config: AppConfig, backend: DocBackend) ->
 			elapsed,
 		)
 
-	except Exception as exc:
+	except Exception:
 		elapsed = (datetime.now(UTC) - start).total_seconds()
 		logger.exception("FAIL uid=%s file=%r elapsed=%.1fs", uid, filename, elapsed)
-		_send_error(uid, filename, exc, msg, reply_to, config)
+		_send_error(uid, filename, msg, reply_to, config)
 
 
 def run() -> None:
@@ -247,6 +266,12 @@ def run() -> None:
 	config = load_config()
 	backend = get_backend(config)
 	logger.info("Backend: %s | Poll interval: %ds", config.backend, config.poll_interval_seconds)
+
+	if not config.allowed_senders:
+		logger.warning(
+			"No 'allowed_senders' configured — every sender can trigger processing. "
+			"Set an allowlist in config.yml to restrict access.",
+		)
 
 	ensure_folders(config)
 

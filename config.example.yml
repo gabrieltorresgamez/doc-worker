@@ -54,4 +54,13 @@ fallback_reply_to: alice@example.com
 on_success: move         # move | delete
 on_failure: move         # move | delete
 
-max_attachment_mb: 25
+max_attachment_mb: 25      # per-attachment size limit
+max_attachments: 10        # max attachments processed per message (extras are ignored)
+
+# Restrict who may trigger the pipeline. The mailbox accepts mail from anyone, so
+# without an allowlist any sender can spend backend credits and have documents
+# relayed to your recipients. Leave empty to accept all senders (not recommended).
+# Entries may be a full address (boss@example.com) or a domain (example.com).
+allowed_senders:
+  - scanner@yourdomain.com
+  - yourdomain.com
