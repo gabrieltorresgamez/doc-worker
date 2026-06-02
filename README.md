@@ -166,8 +166,26 @@ fallback_reply_to: alice@example.com  # used if person key is unknown
 on_success: move      # move | delete
 on_failure: move      # move | delete  ('move' recommended — no scan is silently lost)
 
-max_attachment_mb: 25
+max_attachment_mb: 25 # per-attachment size limit
+max_attachments: 10   # max attachments processed per message
+
+# Restrict who may trigger the pipeline (full address or bare domain).
+# Empty = accept all senders (not recommended).
+allowed_senders:
+  - scanner@yourdomain.com
+  - yourdomain.com
 ```
+
+## Security
+
+The pipeline mailbox accepts mail from anyone, so the worker treats every incoming message as untrusted:
+
+- **Sender allowlist** — only addresses/domains listed in `allowed_senders` may trigger processing. Mail from anyone else is moved to the failed folder without a reply (no backscatter) and without spending backend credits. Leave the list empty only if the mailbox is otherwise protected.
+- **Output sanitization** — OCR output and filenames are rendered into the reply email as HTML through a strict allowlist (`nh3`), so malicious documents cannot inject scripts or markup into a recipient's inbox.
+- **Header safety** — subjects and filenames are stripped of control characters to prevent email-header injection.
+- **Limits** — `max_attachment_mb` bounds each attachment and `max_attachments` bounds how many are processed per message.
+
+> Note: there is no built-in per-sender rate limiting (the design keeps no state store). If untrusted senders are allowlisted, consider a mail-server-side rate limit as defense in depth.
 
 ## Privacy
 
