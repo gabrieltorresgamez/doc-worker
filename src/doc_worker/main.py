@@ -85,8 +85,8 @@ def _subject(mode: str, lang_code: str, filename: str) -> str:
 	"""
 	tag = lang_code.upper()
 	if mode == "translate":
-		return f"Traducción ({tag}): {filename}"
-	return f"Resumen ({tag}): {filename}"
+		return f"🌐 ({tag}): {filename}"
+	return f"📋 ({tag}): {filename}"
 
 
 def _collect_attachments(
